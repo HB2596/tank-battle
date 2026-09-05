@@ -375,7 +375,8 @@ function updatePlayer(){
   if(dy!==0&&!posInWall(player.x,ny,TANK_S,TANK_S))player.y=Math.max(0,Math.min(canvasH-TANK_S,ny));
   if(shoot&&player.shootCooldown<=0){spawnBullet(player.x,player.y,player.dir,'player');player.shootCooldown=SHOOT_CD;}
   // 调试信息
-  STATUS.textContent='玩家:'+Math.round(player.x)+','+Math.round(player.y)+' 按键:U='+mUp+' D='+mDown+' L='+mLeft+' R='+mRight+' 敌人:'+enemies.length;
+  let enemyInfo = enemies.length > 0 ? '敌:'+enemies.map(e=>Math.round(e.x)+','+Math.round(e.y)).join(';') : '无';
+  STATUS.textContent='玩家:'+Math.round(player.x)+','+Math.round(player.y)+' 按键:U='+mUp+' D='+mDown+' L='+mLeft+' R='+mRight+' 敌人:'+enemies.length+' ['+enemyInfo+']';
 }
 
 // ============================================================
@@ -518,6 +519,8 @@ function startGame(){
     player.x = (MAP_COLS/2 - 0.5) * CELL;
     player.y = (MAP_ROWS - 2) * CELL;
     console.log('Player spawn:', player.x, player.y);
+    console.log('Canvas:', canvasW, canvasH);
+    console.log('MAP:', MAP_ROWS, 'x', MAP_COLS);
     spawnWave();
     loop();
     STATUS.textContent='游戏已开始！用方向键移动，空格射击';
