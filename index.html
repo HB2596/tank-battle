@@ -61,6 +61,7 @@
   </div>
   <div class="controls">↑↓←→ 移动 | 空格射击 | 摧毁敌方坦克获得分数</div>
   <div id="debug"></div>
+  <div id="testArea" style="width:600px; height:30px; background:#222; color:#0f0; font-size:12px; text-align:center; line-height:30px;"></div>
 
 <script>
 // ============================================================
@@ -480,20 +481,23 @@ function loop(){
 }
 
 // ============================================================
-//  键盘事件 — 直接用 e.code 记录，不做 preventDefault 的干扰
+//  键盘事件 — 多重监听器确保捕获
 // ============================================================
+const testArea = document.getElementById('testArea');
+
+// 在最外层 window 监听，确保不被任何元素拦截
+window.addEventListener('keydown', function(e) {
+  testArea.textContent = 'WINDOW caught: code=' + e.code + ' key=' + e.key + ' type=' + e.type;
+}, true); // useCapture 捕获阶段
+
 document.addEventListener('keydown', function(e) {
-  // 调试：输出实际收到的 code 和 key
-  DEBUG.textContent = 'RAW: code=' + e.code + ' key=' + e.key + ' which=' + e.which;
+  testArea.textContent = 'DOC caught: code=' + e.code + ' key=' + e.key + ' type=' + e.type;
   const code = e.code;
   if(code === 'ArrowUp' || code === 'KeyW')    keys['ArrowUp']    = true;
   if(code === 'ArrowDown' || code === 'KeyS')  keys['ArrowDown']  = true;
   if(code === 'ArrowLeft' || code === 'KeyA')  keys['ArrowLeft']  = true;
   if(code === 'ArrowRight'|| code === 'KeyD')  keys['ArrowRight'] = true;
   if(code === 'Space')                          keys['Space']      = true;
-  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(code)){
-    e.preventDefault();
-  }
 });
 
 document.addEventListener('keyup', function(e) {
