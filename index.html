@@ -117,7 +117,7 @@ function posInWall(x,y,w,h){
 function drawTank(x,y,dir,color,isPlayer,inv){
   ctx.save();
   ctx.translate(x+TANK_S/2, y+TANK_S/2);
-  const angles={up:-Math.PI/2,down:Math.PI/2,left:Math.PI,right:0};
+  const angles={up:0,down:Math.PI,left:-Math.PI/2,right:Math.PI/2};
   ctx.rotate(angles[dir]||0);
   ctx.fillStyle='#555';
   ctx.fillRect(-TANK_S/2,-TANK_S/2,8,TANK_S);
