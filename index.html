@@ -432,12 +432,12 @@ function updateEnemies(){
     e.shootCooldown--;
     if(e.shootCooldown<=0){
       // 判断最佳射击方向
-      const dx=player.x-e.x, dy=player.y-e.y;
+      const dirDx=player.x-e.x, dirDy=player.y-e.y;
       let shootDir=e.dir;
-      if(Math.abs(dx)>Math.abs(dy)){
-        shootDir=dx>0?'right':'left';
+      if(Math.abs(dirDx)>Math.abs(dirDy)){
+        shootDir=dirDx>0?'right':'left';
       } else {
-        shootDir=dy>0?'down':'up';
+        shootDir=dirDy>0?'down':'up';
       }
       spawnBullet(e.x,e.y,shootDir,'enemy');
       e.shootCooldown=rand(50,120-wave*3)|0; // 波次越高射速越快
