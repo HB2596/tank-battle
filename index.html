@@ -426,6 +426,10 @@ function spawnEnemy(typeName){
 
 function updateEnemies(){
   enemies.forEach(e=>{
+    // 调试：输出敌人位置
+    if(frame % 30 === 0){
+      console.log('Enemy:', e.x, e.y, 'dir:', e.dir, 'hp:', e.hp);
+    }
     updateEnemyAI(e);
     let dx=0,dy=0;
     if(e.dir==='up')dy=-e.speed;
@@ -514,6 +518,10 @@ function startGame(){
     // 重置canvas大小和样式
     canvas.style.width = canvasW + 'px';
     canvas.style.height = canvasH + 'px';
+    document.getElementById('gameContainer').style.width = canvasW + 'px';
+    document.getElementById('gameContainer').style.height = canvasH + 'px';
+    document.getElementById('hud').style.width = canvasW + 'px';
+    document.getElementById('status').style.width = canvasW + 'px';
     // 确保页面有焦点
     document.body.focus();
     canvas.focus();
