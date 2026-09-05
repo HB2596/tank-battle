@@ -320,10 +320,10 @@ function updatePlayer(){
   if(player.shootCooldown>0) player.shootCooldown--;
 
   let nx = player.x, ny = player.y;
-  if(keys['w']||keys['arrowup'])    { ny-=TANK_SPD; player.dir='up'; }
-  if(keys['s']||keys['arrowdown'])  { ny+=TANK_SPD; player.dir='down'; }
-  if(keys['a']||keys['arrowleft'])  { nx-=TANK_SPD; player.dir='left'; }
-  if(keys['d']||keys['arrowright']) { nx+=TANK_SPD; player.dir='right'; }
+  if(keys['KeyW']||keys['ArrowUp'])    { ny-=TANK_SPD; player.dir='up'; }
+  if(keys['KeyS']||keys['ArrowDown'])  { ny+=TANK_SPD; player.dir='down'; }
+  if(keys['KeyA']||keys['ArrowLeft'])  { nx-=TANK_SPD; player.dir='left'; }
+  if(keys['KeyD']||keys['ArrowRight']) { nx+=TANK_SPD; player.dir='right'; }
 
   // 边界 + 碰撞
   nx = Math.max(0, Math.min(W-TANK_S, nx));
@@ -331,7 +331,7 @@ function updatePlayer(){
   if(!posInWall(nx, player.y, TANK_S, TANK_S)) player.x = nx;
   if(!posInWall(player.x, ny, TANK_S, TANK_S)) player.y = ny;
 
-  if(keys[' '] && player.shootCooldown<=0){
+  if(keys['Space'] && player.shootCooldown<=0){
     spawnBullet(player.x, player.y, player.dir, 'player');
     player.shootCooldown = 18;
   }
@@ -508,13 +508,16 @@ function loop(){
 }
 
 // ---- 事件 ----
-window.addEventListener('keydown', e=>{
-  keys[e.key.toLowerCase()] = true;
-  if(e.key===' ') e.preventDefault();
+canvas.addEventListener('keydown', e=>{
+  keys[e.code] = true;
+  if(e.key===' '||e.code==='ArrowUp'||e.code==='ArrowDown'||e.code==='ArrowLeft'||e.code==='ArrowRight') e.preventDefault();
+  canvas.focus();
 });
-window.addEventListener('keyup', e=>{
-  keys[e.key.toLowerCase()] = false;
+canvas.addEventListener('keyup', e=>{
+  keys[e.code] = false;
 });
+canvas.tabIndex = 1;
+canvas.style.outline = 'none';
 START.addEventListener('click', startGame);
 
 // 初始渲染
