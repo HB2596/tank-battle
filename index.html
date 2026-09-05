@@ -106,7 +106,9 @@ function posInWall(x,y,w,h){
   const l=Math.floor(x/CELL), r=Math.floor((x+w-1)/CELL);
   const t=Math.floor(y/CELL), b=Math.floor((y+h-1)/CELL);
   for(let rr=t; rr<=b; rr++) for(let cc=l; cc<=r; cc++){
-    if(rr<0||rr>=MAP_TEMPLATE.length||cc<0||cc>=MAP_TEMPLATE[0].length) return true;
+    // 边界外的格子不视为墙（允许坦克贴着地图边缘移动）
+    if(rr<0||cc<0||cc>=MAP_TEMPLATE[0].length) return false;
+    if(rr>=MAP_TEMPLATE.length) return false;
     if(MAP_TEMPLATE[rr][cc]!==0) return true;
   }
   return false;
