@@ -245,7 +245,7 @@ function updateEnemyAI(e){
 // ============================================================
 //  绘制
 // ============================================================
-function drawTank(x,y,dir,color,isPlayer,inv){
+function drawTank(x,y,dir,color,isPlayer,inv,hp,maxHp){
   ctx.save();
   ctx.translate(x+TANK_S/2, y+TANK_S/2);
   const angles={up:0,down:Math.PI,left:-Math.PI/2,right:Math.PI/2};
@@ -268,9 +268,9 @@ function drawTank(x,y,dir,color,isPlayer,inv){
   // 炮管
   ctx.fillStyle='#aaa';ctx.fillRect(-3,-TANK_S/2-6,6,TANK_S/2+2);
   // 血量指示（敌人）
-  if(!isPlayer && e.hp > 1){
+  if(!isPlayer && hp > 1){
     ctx.fillStyle='#f00';
-    ctx.fillRect(-10,-TANK_S/2-10,20*(e.hp/e.maxHp),3);
+    ctx.fillRect(-10,-TANK_S/2-10,20*(hp/maxHp),3);
   }
   ctx.restore();
 }
@@ -537,7 +537,7 @@ function loop(){
   updateParticles();
   drawMap();
   drawTank(player.x,player.y,player.dir,player.color,true,player.invincible>0);
-  enemies.forEach(e=>drawTank(e.x,e.y,e.dir,e.color,false,false));
+  enemies.forEach(e=>drawTank(e.x,e.y,e.dir,e.color,false,false,e.hp,e.maxHp));
   drawBullets();drawParticles();
   requestAnimationFrame(loop);
   } catch(err) {
