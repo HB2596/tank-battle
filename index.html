@@ -271,8 +271,9 @@ function updatePlayer(){
   if(player.invincible > 0) player.invincible--;
   if(player.shootCooldown > 0) player.shootCooldown--;
 
-  // 读取按键状态 — 用多套 fallback 兼容所有浏览器
   const k = keys;
+
+  // 读取按键
   const moveUp    = !!k['ArrowUp'];
   const moveDown  = !!k['ArrowDown'];
   const moveLeft  = !!k['ArrowLeft'];
@@ -284,19 +285,22 @@ function updatePlayer(){
   if(moveLeft){ dx = -TANK_SPD; player.dir = 'left'; }
   if(moveRight){ dx = TANK_SPD; player.dir = 'right'; }
 
-  // 分开检测 X 和 Y 轴碰撞
-  const newX = player.x + dx;
-  const newY = player.y + dy;
+  // 记录上一帧位置用于调试
+  const oldX = player.x, oldY = player.y;
 
-  // X 轴碰撞检测
+  // X 轴移动 + 碰撞
   if(dx !== 0){
-    const collidesX = posInWall(newX, player.y, TANK_S, TANK_S);
-    if(!collidesX) player.x = Math.max(0, Math.min(W - TANK_S, newX));
+    player.x = Math.max(0, Math.min(W - TANK_S, player.x + dx));
   }
-  // Y 轴碰撞检测
+  // Y 轴移动 + 碰撞
   if(dy !== 0){
-    const collidesY = posInWall(player.x, newY, TANK_S, TANK_S);
-    if(!collidesY) player.y = Math.max(0, Math.min(H - TANK_S, newY));
+    player.y = Math.max(0, Math.min(H - TANK_S, player.y + dy));
+  }
+
+  // 简化版碰撞：如果新位置撞墙就回退
+  if(posInWall(player.x, player.y, TANK_S, TANK_S)){
+    player.x = oldX;
+    player.y = oldY;
   }
 
   // 射击
@@ -304,6 +308,16 @@ function updatePlayer(){
     spawnBullet(player.x, player.y, player.dir, 'player');
     player.shootCooldown = 18;
   }
+
+  // 调试输出
+  DEBUG.textContent =
+    'ArrowUp:' + k['ArrowUp'] +
+    ' ArrowDown:' + k['ArrowDown'] +
+    ' ArrowLeft:' + k['ArrowLeft'] +
+    ' ArrowRight:' + k['ArrowRight'] +
+    ' Space:' + k['Space'] +
+    ' pos:' + Math.round(player.x) + ',' + Math.round(player.y) +
+    ' dir:' + player.dir;
 }
 
 // ---- 敌人 ----
