@@ -383,18 +383,25 @@ function updatePlayer(){
 // ============================================================
 function findSpawnPos(){
   let attempts=0;
-  while(attempts<100){
-    // 敌人在顶部区域生成，留出安全距离
+  // 敌人在顶部区域生成，确保在可见范围内
+  const maxAttempts = 200;
+  while(attempts<maxAttempts){
+    // 敌人出生在地图顶部1/4区域
     const x=rand(CELL*2, canvasW-CELL*2-TANK_S);
-    const y=rand(CELL*2, Math.min(canvasH*0.3, canvasH-TANK_S-CELL*2));
+    const maxY = Math.min(canvasH*0.35, canvasH-TANK_S*3);
+    const y=rand(CELL*2, maxY);
     if(!posInWall(x,y,TANK_S,TANK_S)){
       let overlap=false;
       for(let o of enemies){if(Math.abs(x-o.x)<TANK_S&&Math.abs(y-o.y)<TANK_S){overlap=true;break;}}
-      if(!overlap)return{x,y};
+      if(!overlap){
+        console.log('Spawn enemy at:', x, y);
+        return{x,y};
+      }
     }
     attempts++;
   }
-  return{x:canvasW/2-TANK_S/2, y:-TANK_S};
+  // 保底：在顶部中央生成（可能穿墙）
+  return{x:canvasW/2-TANK_S/2, y:TANK_S};
 }
 
 function spawnEnemy(typeName){
@@ -504,12 +511,16 @@ function startGame(){
     // 重置canvas大小和样式
     canvas.style.width = canvasW + 'px';
     canvas.style.height = canvasH + 'px';
+    // 确保页面有焦点
+    document.body.focus();
     canvas.focus();
-    // 玩家初始位置在地图底部附近，但确保在墙外
-    player.y = canvasH - TANK_S * 2;
+    // 玩家初始位置在地图底部中央
+    player.x = (MAP_COLS/2 - 0.5) * CELL;
+    player.y = (MAP_ROWS - 2) * CELL;
+    console.log('Player spawn:', player.x, player.y);
     spawnWave();
     loop();
-    STATUS.textContent='游戏已开始！用方向键移动';
+    STATUS.textContent='游戏已开始！用方向键移动，空格射击';
   } catch(err) {
     const b=document.getElementById('errbox');
     b.style.display='block';
