@@ -483,6 +483,8 @@ function loop(){
 //  键盘事件 — 直接用 e.code 记录，不做 preventDefault 的干扰
 // ============================================================
 document.addEventListener('keydown', function(e) {
+  // 调试：输出实际收到的 code 和 key
+  DEBUG.textContent = 'RAW: code=' + e.code + ' key=' + e.key + ' which=' + e.which;
   const code = e.code;
   if(code === 'ArrowUp' || code === 'KeyW')    keys['ArrowUp']    = true;
   if(code === 'ArrowDown' || code === 'KeyS')  keys['ArrowDown']  = true;
