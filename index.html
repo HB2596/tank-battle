@@ -384,7 +384,7 @@ function findSpawnPos(){
   while(attempts<100){
     // 敌人在顶部区域生成，留出安全距离
     const x=rand(CELL*2, canvasW-CELL*2-TANK_S);
-    const y=rand(CELL*2, Math.min(canvasH*0.3, canvasH-TANK_S-cell*2));
+    const y=rand(CELL*2, Math.min(canvasH*0.3, canvasH-TANK_S-CELL*2));
     if(!posInWall(x,y,TANK_S,TANK_S)){
       let overlap=false;
       for(let o of enemies){if(Math.abs(x-o.x)<TANK_S&&Math.abs(y-o.y)<TANK_S){overlap=true;break;}}
