@@ -320,10 +320,10 @@ function updatePlayer(){
   if(player.shootCooldown>0) player.shootCooldown--;
 
   let nx = player.x, ny = player.y;
-  if(keys['KeyW']||keys['ArrowUp'])    { ny-=TANK_SPD; player.dir='up'; }
-  if(keys['KeyS']||keys['ArrowDown'])  { ny+=TANK_SPD; player.dir='down'; }
-  if(keys['KeyA']||keys['ArrowLeft'])  { nx-=TANK_SPD; player.dir='left'; }
-  if(keys['KeyD']||keys['ArrowRight']) { nx+=TANK_SPD; player.dir='right'; }
+  if(keys['w']||keys['arrowup'])    { ny-=TANK_SPD; player.dir='up'; }
+  if(keys['s']||keys['arrowdown'])  { ny+=TANK_SPD; player.dir='down'; }
+  if(keys['a']||keys['arrowleft'])  { nx-=TANK_SPD; player.dir='left'; }
+  if(keys['d']||keys['arrowright']) { nx+=TANK_SPD; player.dir='right'; }
 
   // 边界 + 碰撞
   nx = Math.max(0, Math.min(W-TANK_S, nx));
@@ -331,7 +331,7 @@ function updatePlayer(){
   if(!posInWall(nx, player.y, TANK_S, TANK_S)) player.x = nx;
   if(!posInWall(player.x, ny, TANK_S, TANK_S)) player.y = ny;
 
-  if(keys['Space'] && player.shootCooldown<=0){
+  if(keys[' '] && player.shootCooldown<=0){
     spawnBullet(player.x, player.y, player.dir, 'player');
     player.shootCooldown = 18;
   }
@@ -466,6 +466,7 @@ function startGame(){
   updateHUD();
   HUD_WAVE.textContent = '第 1 波';
   OVERLAY.classList.add('hidden');
+  canvas.focus();
 
   spawnWave();
   loop();
@@ -508,17 +509,19 @@ function loop(){
 }
 
 // ---- 事件 ----
-canvas.addEventListener('keydown', e=>{
-  keys[e.code] = true;
-  if(e.key===' '||e.code==='ArrowUp'||e.code==='ArrowDown'||e.code==='ArrowLeft'||e.code==='ArrowRight') e.preventDefault();
-  canvas.focus();
+// 用 document 监听，不依赖 canvas 焦点；启动时自动聚焦 canvas
+document.addEventListener('keydown', e=>{
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  if(e.key===' '||e.key.startsWith('Arrow')) e.preventDefault();
+  if(!document.hasFocus()) window.focus();
 });
-canvas.addEventListener('keyup', e=>{
-  keys[e.code] = false;
+document.addEventListener('keyup', e=>{
+  const k = e.key.toLowerCase();
+  keys[k] = false;
 });
-canvas.tabIndex = 1;
-canvas.style.outline = 'none';
 START.addEventListener('click', startGame);
+canvas.addEventListener('click', ()=> canvas.focus());
 
 // 初始渲染
 ctx.fillStyle='#16213e';
