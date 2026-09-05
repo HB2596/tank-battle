@@ -374,6 +374,8 @@ function updatePlayer(){
   if(dx!==0&&!posInWall(nx,player.y,TANK_S,TANK_S))player.x=Math.max(0,Math.min(canvasW-TANK_S,nx));
   if(dy!==0&&!posInWall(player.x,ny,TANK_S,TANK_S))player.y=Math.max(0,Math.min(canvasH-TANK_S,ny));
   if(shoot&&player.shootCooldown<=0){spawnBullet(player.x,player.y,player.dir,'player');player.shootCooldown=SHOOT_CD;}
+  // 调试信息
+  STATUS.textContent='玩家:'+Math.round(player.x)+','+Math.round(player.y)+' 按键:U='+mUp+' D='+mDown+' L='+mLeft+' R='+mRight+' 敌人:'+enemies.length;
 }
 
 // ============================================================
@@ -477,6 +479,7 @@ function spawnWave(){
     spawnQueue.push(type);
   }
   HUD_ENEMY.textContent='敌人: 0/'+count;
+  STATUS.textContent='准备生成 '+count+' 个敌人...';
 }
 
 // ============================================================
