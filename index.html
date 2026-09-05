@@ -118,10 +118,10 @@ function generateMap(w){
   canvas.width = canvasW;
   canvas.height = canvasH;
 
-  // 重新调整玩家出生位置（确保在地图内，远离底部墙壁）
+  // 重新调整玩家出生位置（在地图底部中央，确保不在墙内）
   if(player){
     player.x = (cols/2 - 0.5) * CELL;
-    player.y = Math.max(CELL * 2, canvasH - TANK_S - CELL * 2);
+    player.y = (rows - 2) * CELL;
   }
 
   // HUD 适应新宽度
@@ -140,15 +140,15 @@ function generateMap(w){
         row.push(1);
         continue;
       }
-      // 玩家出生区域保持空旷
-      const playerZoneR = rows - 3;
+      // 玩家出生区域保持宽阔空旷（底部中央）
+      const playerZoneR = rows - 2;
       const playerZoneC = Math.floor(cols/2);
-      if(Math.abs(r-playerZoneR)<=1 && Math.abs(c-playerZoneC)<=2){
+      if(r >= rows - 3 && c >= Math.floor(cols/2) - 3 && c <= Math.floor(cols/2) + 3){
         row.push(0);
         continue;
       }
       // 顶部敌人出生区域留空
-      if(r <= 1){
+      if(r <= 2){
         row.push(0);
         continue;
       }
@@ -358,7 +358,7 @@ function drawMap(){
 //  玩家
 // ============================================================
 function initPlayer(){
-  return{x:(MAP_COLS/2-0.5)*CELL, y:Math.max(TANK_S*2, canvasH-TANK_S-TANK_S), dir:'up',
+  return{x:(MAP_COLS/2-0.5)*CELL, y:(MAP_ROWS-2)*CELL, dir:'up',
          color:'#4ade80', invincible:0, shootCooldown:0};
 }
 
