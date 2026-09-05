@@ -449,6 +449,7 @@ function loop(){
   updateEnemies();
   updateBullets();
   updateParticles();
+  checkWave(); // 检查是否进入下一波
   drawMap();
   drawTank(player.x,player.y,player.dir,player.color,true,player.invincible>0);
   for(let i=0;i<enemies.length;i++){
