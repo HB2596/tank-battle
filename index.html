@@ -466,46 +466,27 @@ function loop(){
 }
 
 // ============================================================
-//  键盘事件 — 多重 fallback 确保按键捕获
+//  键盘事件 — 直接用 e.code 记录，不做 preventDefault 的干扰
 // ============================================================
-const UP_KEYS    = new Set(['ArrowUp',    'KeyW', 'w',     '38']);
-const DOWN_KEYS  = new Set(['ArrowDown',  'KeyS', 's',     '40']);
-const LEFT_KEYS  = new Set(['ArrowLeft',  'KeyA', 'a',     '37']);
-const RIGHT_KEYS = new Set(['ArrowRight', 'KeyD', 'd',     '39']);
-const SHOOT_KEYS = new Set(['Space', 'KeyJ', 'j', '8']);
-
-function isMoveKey(code) {
-  return UP_KEYS.has(code) || DOWN_KEYS.has(code) ||
-         LEFT_KEYS.has(code) || RIGHT_KEYS.has(code) ||
-         SHOOT_KEYS.has(code);
-}
-
 document.addEventListener('keydown', function(e) {
   const code = e.code;
-  const key  = e.key;
-
-  if(isMoveKey(code) || isMoveKey(key)){
+  if(code === 'ArrowUp' || code === 'KeyW')    keys['ArrowUp']    = true;
+  if(code === 'ArrowDown' || code === 'KeyS')  keys['ArrowDown']  = true;
+  if(code === 'ArrowLeft' || code === 'KeyA')  keys['ArrowLeft']  = true;
+  if(code === 'ArrowRight'|| code === 'KeyD')  keys['ArrowRight'] = true;
+  if(code === 'Space')                          keys['Space']      = true;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(code)){
     e.preventDefault();
-    // 优先用 code，其次用 key
-    if(code && code !== 'Unidentified'){
-      keys[code] = true;
-    } else if(key && key !== 'Unidentified'){
-      keys[key] = true;
-    }
-    if(!document.hasFocus()) document.body.focus();
   }
 });
 
 document.addEventListener('keyup', function(e) {
   const code = e.code;
-  const key  = e.key;
-  if(isMoveKey(code) || isMoveKey(key)){
-    if(code && code !== 'Unidentified'){
-      keys[code] = false;
-    } else if(key && key !== 'Unidentified'){
-      keys[key] = false;
-    }
-  }
+  if(code === 'ArrowUp' || code === 'KeyW')    keys['ArrowUp']    = false;
+  if(code === 'ArrowDown' || code === 'KeyS')  keys['ArrowDown']  = false;
+  if(code === 'ArrowLeft' || code === 'KeyA')  keys['ArrowLeft']  = false;
+  if(code === 'ArrowRight'|| code === 'KeyD')  keys['ArrowRight'] = false;
+  if(code === 'Space')                          keys['Space']      = false;
 });
 
 START.addEventListener('click', startGame);
