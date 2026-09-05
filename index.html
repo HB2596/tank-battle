@@ -41,6 +41,7 @@
     }
     #overlay button:hover { background: #c73652; }
     .controls { font-size: 12px; color: #555; text-align: center; }
+    #debug { font-size: 11px; color: #333; text-align: center; min-height: 16px; }
   </style>
 </head>
 <body>
@@ -59,11 +60,11 @@
     </div>
   </div>
   <div class="controls">↑↓←→ 移动 | 空格射击 | 摧毁敌方坦克获得分数</div>
+  <div id="debug"></div>
 
 <script>
 // ============================================================
-//  坦克大战 — 完整实现
-//  Canvas + 原生 JS，无外部依赖
+//  坦克大战 — Canvas 原生实现
 // ============================================================
 
 const canvas  = document.getElementById('gameCanvas');
@@ -72,25 +73,25 @@ const W       = canvas.width;
 const H       = canvas.height;
 const OVERLAY = document.getElementById('overlay');
 const START   = document.getElementById('startBtn');
+const DEBUG   = document.getElementById('debug');
 
 const HUD_SCORE   = document.getElementById('scoreDisplay');
 const HUD_LIVES   = document.getElementById('livesDisplay');
 const HUD_WAVE    = document.getElementById('waveDisplay');
 
 // ---- 常量 ----
-const CELL   = 40;
-const BW     = 6;
-const BW_SPD = 7;
-const TANK_S = 34;
-const TANK_SPD = 2;
-const ENEMY_SPD = 1.2;
+const CELL        = 40;
+const BW          = 6;
+const BW_SPD      = 7;
+const TANK_S      = 34;
+const TANK_SPD    = 2;
+const ENEMY_SPD   = 1.2;
 const INVINCIBLE_DUR = 120;
 
 // ---- 游戏状态 ----
 let player, enemies, bullets, particles;
 let score, lives, wave, frame, gameOver, running;
-// 使用代码对象跟踪按键状态
-const keys = {};
+let keys = {};
 let waveTimer = 0;
 let spawnQueue = [];
 
@@ -133,7 +134,6 @@ function posInWall(x,y,w,h){
 function drawTank(x, y, dir, color, isPlayer, invincible){
   ctx.save();
   ctx.translate(x + TANK_S/2, y + TANK_S/2);
-  // 方向对应的旋转角度
   const angles = { up: -Math.PI/2, down: Math.PI/2, left: Math.PI, right: 0 };
   ctx.rotate(angles[dir] || 0);
 
@@ -149,7 +149,7 @@ function drawTank(x, y, dir, color, isPlayer, invincible){
   }
 
   // 车身
-  ctx.fillStyle = invincible ? (Math.floor(frame/4)%2 ? '#fff' : '#e94560') : color;
+  ctx.fillStyle = invincible ? (Math.floor(frame/4)%2?'#fff':'#e94560') : color;
   ctx.fillRect(-TANK_S/2+4, -TANK_S/2+4, TANK_S-8, TANK_S-8);
 
   // 炮塔
@@ -180,26 +180,22 @@ function updateBullets(){
     if(b.dir === 'left')  b.x -= b.speed;
     if(b.dir === 'right') b.x += b.speed;
 
-    // 出界
     if(b.x < -BW || b.x > W || b.y < -BW || b.y > H){
       bullets.splice(i, 1); continue;
     }
-
-    // 撞墙
     if(posInWall(b.x, b.y, BW, BW)){
       explode(b.x + BW/2, b.y + BW/2, 3, '#fa0');
       bullets.splice(i, 1); continue;
     }
 
-    // 玩家子弹击中敌人
     if(b.owner === 'player'){
       for(let j = enemies.length-1; j >= 0; j--){
-        if(rectOverlap({x:b.x, y:b.y, w:b.w, h:b.h}, {x:enemies[j].x, y:enemies[j].y, w:TANK_S, h:TANK_S})){
-          explode(enemies[j].x + TANK_S/2, enemies[j].y + TANK_S/2, 15, '#e94560');
-          score += enemies[j].type === 'basic' ? 10 : (enemies[j].type === 'fast' ? 20 : 30);
-          HUD_SCORE.textContent = '得分: ' + score;
-          enemies.splice(j, 1);
-          bullets.splice(i, 1);
+        if(rectOverlap({x:b.x,y:b.y,w:b.w,h:b.h},{x:enemies[j].x,y:enemies[j].y,w:TANK_S,h:TANK_S})){
+          explode(enemies[j].x+TANK_S/2, enemies[j].y+TANK_S/2, 15, '#e94560');
+          score += enemies[j].type==='basic'?10:(enemies[j].type==='fast'?20:30);
+          HUD_SCORE.textContent = '得分: '+score;
+          enemies.splice(j,1);
+          bullets.splice(i,1);
           checkWave();
           break;
         }
@@ -207,15 +203,14 @@ function updateBullets(){
       continue;
     }
 
-    // 敌人子弹击中玩家
     if(b.owner === 'enemy' && !player.invincible){
-      if(rectOverlap({x:b.x, y:b.y, w:b.w, h:b.h}, {x:player.x, y:player.y, w:TANK_S, h:TANK_S})){
-        explode(player.x + TANK_S/2, player.y + TANK_S/2, 20, '#e94560');
+      if(rectOverlap({x:b.x,y:b.y,w:b.w,h:b.h},{x:player.x,y:player.y,w:TANK_S,h:TANK_S})){
+        explode(player.x+TANK_S/2, player.y+TANK_S/2, 20, '#e94560');
         lives--;
         updateHUD();
         if(lives <= 0){ endGame(); return; }
         player.invincible = INVINCIBLE_DUR;
-        bullets.splice(i, 1);
+        bullets.splice(i,1);
         continue;
       }
     }
@@ -224,9 +219,9 @@ function updateBullets(){
 
 function drawBullets(){
   bullets.forEach(b => {
-    ctx.fillStyle = b.owner === 'player' ? '#ffd700' : '#ff6';
+    ctx.fillStyle = b.owner==='player'?'#ffd700':'#ff6';
     ctx.beginPath();
-    ctx.arc(b.x + BW/2, b.y + BW/2, BW/2, 0, Math.PI*2);
+    ctx.arc(b.x+BW/2, b.y+BW/2, BW/2, 0, Math.PI*2);
     ctx.fill();
   });
 }
@@ -236,28 +231,26 @@ function explode(cx, cy, count, color){
   for(let i = 0; i < count; i++){
     particles.push({
       x: cx, y: cy,
-      vx: rand(-3, 3), vy: rand(-3, 3),
-      life: rand(15, 35), maxLife: 35,
+      vx: rand(-3,3), vy: rand(-3,3),
+      life: rand(15,35), maxLife: 35,
       color: color || '#e94560',
-      size: rand(2, 5)
+      size: rand(2,5)
     });
   }
 }
-
 function updateParticles(){
   for(let i = particles.length-1; i >= 0; i--){
-    const p = particles[i];
-    p.x += p.vx; p.y += p.vy;
-    p.life--;
-    if(p.life <= 0) particles.splice(i, 1);
+    particles[i].x += particles[i].vx;
+    particles[i].y += particles[i].vy;
+    particles[i].life--;
+    if(particles[i].life <= 0) particles.splice(i,1);
   }
 }
-
 function drawParticles(){
   particles.forEach(p => {
     ctx.globalAlpha = p.life / p.maxLife;
     ctx.fillStyle = p.color;
-    ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+    ctx.fillRect(p.x-p.size/2, p.y-p.size/2, p.size, p.size);
   });
   ctx.globalAlpha = 1;
 }
@@ -278,11 +271,12 @@ function updatePlayer(){
   if(player.invincible > 0) player.invincible--;
   if(player.shootCooldown > 0) player.shootCooldown--;
 
-  // 使用 e.code 追踪的方向键
-  const moveUp    = keys['ArrowUp'];
-  const moveDown  = keys['ArrowDown'];
-  const moveLeft  = keys['ArrowLeft'];
-  const moveRight = keys['ArrowRight'];
+  // 读取按键状态 — 用多套 fallback 兼容所有浏览器
+  const k = keys;
+  const moveUp    = !!k['ArrowUp'];
+  const moveDown  = !!k['ArrowDown'];
+  const moveLeft  = !!k['ArrowLeft'];
+  const moveRight = !!k['ArrowRight'];
 
   let dx = 0, dy = 0;
   if(moveUp){ dy = -TANK_SPD; player.dir = 'up'; }
@@ -290,19 +284,23 @@ function updatePlayer(){
   if(moveLeft){ dx = -TANK_SPD; player.dir = 'left'; }
   if(moveRight){ dx = TANK_SPD; player.dir = 'right'; }
 
-  // 移动 X 轴
-  const newNx = player.x + dx;
-  if(dx !== 0 && !posInWall(newNx, player.y, TANK_S, TANK_S)){
-    player.x = Math.max(0, Math.min(W - TANK_S, newNx));
+  // 分开检测 X 和 Y 轴碰撞
+  const newX = player.x + dx;
+  const newY = player.y + dy;
+
+  // X 轴碰撞检测
+  if(dx !== 0){
+    const collidesX = posInWall(newX, player.y, TANK_S, TANK_S);
+    if(!collidesX) player.x = Math.max(0, Math.min(W - TANK_S, newX));
   }
-  // 移动 Y 轴
-  const newNy = player.y + dy;
-  if(dy !== 0 && !posInWall(player.x, newNy, TANK_S, TANK_S)){
-    player.y = Math.max(0, Math.min(H - TANK_S, newNy));
+  // Y 轴碰撞检测
+  if(dy !== 0){
+    const collidesY = posInWall(player.x, newY, TANK_S, TANK_S);
+    if(!collidesY) player.y = Math.max(0, Math.min(H - TANK_S, newY));
   }
 
   // 射击
-  if(keys['Space'] && player.shootCooldown <= 0){
+  if(k['Space'] && player.shootCooldown <= 0){
     spawnBullet(player.x, player.y, player.dir, 'player');
     player.shootCooldown = 18;
   }
@@ -320,9 +318,8 @@ function spawnEnemy(type){
   const x = rand(40, W - TANK_S - 40);
   const e = {
     x, y: -TANK_S, dir: 'down', type, color: t.color,
-    speed: t.speed, shootCooldown: rand(30, 90)|0, hp: t.hp, moveTimer: 0
+    speed: t.speed, shootCooldown: rand(30,90)|0, hp: t.hp, moveTimer: 0
   };
-  // 不与其它敌人重叠
   for(let o of enemies){
     if(Math.abs(e.x - o.x) < TANK_S && Math.abs(e.y - o.y) < TANK_S) return;
   }
@@ -334,32 +331,25 @@ function updateEnemies(){
     e.moveTimer--;
     if(e.moveTimer <= 0){
       const r = Math.random();
-      if(r < 0.5) e.dir = 'down';
-      else if(r < 0.65) e.dir = 'left';
-      else if(r < 0.8) e.dir = 'right';
-      else e.dir = 'up';
-      e.moveTimer = rand(30, 80)|0;
+      e.dir = r<0.5?'down':(r<0.65?'left':(r<0.8?'right':'up'));
+      e.moveTimer = rand(30,80)|0;
     }
 
     let dx = 0, dy = 0;
-    if(e.dir === 'up') dy = -e.speed;
-    if(e.dir === 'down') dy = e.speed;
-    if(e.dir === 'left') dx = -e.speed;
-    if(e.dir === 'right') dx = e.speed;
+    if(e.dir==='up') dy = -e.speed;
+    else if(e.dir==='down') dy = e.speed;
+    else if(e.dir==='left') dx = -e.speed;
+    else dx = e.speed;
 
-    const newNx = e.x + dx;
-    if(dx !== 0 && !posInWall(newNx, e.y, TANK_S, TANK_S)){
-      e.x = Math.max(0, Math.min(W - TANK_S, newNx));
-    }
-    const newNy = e.y + dy;
-    if(dy !== 0 && !posInWall(e.x, newNy, TANK_S, TANK_S)){
-      e.y = Math.max(0, Math.min(H - TANK_S, newNy));
-    }
+    const newX = e.x + dx;
+    const newY = e.y + dy;
+    if(dx !== 0 && !posInWall(newX, e.y, TANK_S, TANK_S)) e.x = Math.max(0, Math.min(W-TANK_S, newX));
+    if(dy !== 0 && !posInWall(e.x, newY, TANK_S, TANK_S)) e.y = Math.max(0, Math.min(H-TANK_S, newY));
 
     e.shootCooldown--;
     if(e.shootCooldown <= 0){
       spawnBullet(e.x, e.y, e.dir, 'enemy');
-      e.shootCooldown = rand(60, 150)|0;
+      e.shootCooldown = rand(60,150)|0;
     }
   });
 }
@@ -370,7 +360,7 @@ function checkWave(){
     waveTimer++;
     if(waveTimer > 90){
       wave++;
-      HUD_WAVE.textContent = '第 ' + wave + ' 波';
+      HUD_WAVE.textContent = '第 '+wave+' 波';
       spawnWave();
       waveTimer = 0;
     }
@@ -378,7 +368,7 @@ function checkWave(){
 }
 
 function spawnWave(){
-  const count = Math.min(2 + wave * 2, 16);
+  const count = Math.min(2 + wave*2, 16);
   for(let i = 0; i < count; i++){
     const r = Math.random();
     let type = 'basic';
@@ -393,7 +383,7 @@ function drawMap(){
   MAP_TEMPLATE.forEach((row, r) => {
     row.forEach((cell, c) => {
       if(cell !== 1) return;
-      const x = c * CELL, y = r * CELL;
+      const x = c*CELL, y = r*CELL;
       ctx.fillStyle = '#7c3aed';
       ctx.fillRect(x+1, y+1, CELL-2, CELL-2);
       ctx.strokeStyle = '#5b21b6';
@@ -410,7 +400,7 @@ function drawMap(){
 
 // ---- HUD ----
 function updateHUD(){
-  HUD_LIVES.textContent = '生命: ' + '♥'.repeat(Math.max(0, lives));
+  HUD_LIVES.textContent = '生命: ' + '♥'.repeat(Math.max(0,lives));
 }
 
 // ---- 游戏流程 ----
@@ -427,17 +417,15 @@ function startGame(){
   running   = true;
   waveTimer = 0;
   spawnQueue= [];
-  // 清空按键状态
-  for(const k in keys) keys[k] = false;
+  keys = {};  // 重置所有按键
 
   HUD_SCORE.textContent = '得分: 0';
   updateHUD();
   HUD_WAVE.textContent = '第 1 波';
   OVERLAY.classList.add('hidden');
 
-  // 确保 canvas 有焦点
   canvas.focus();
-  if(!document.hasFocus()) window.focus();
+  document.body.focus();
 
   spawnWave();
   loop();
@@ -448,7 +436,7 @@ function endGame(){
   running  = false;
   OVERLAY.classList.remove('hidden');
   OVERLAY.querySelector('h2').textContent = '游戏结束';
-  OVERLAY.querySelector('p').textContent  = '最终得分: ' + score + ' | 到达第 ' + wave + ' 波';
+  OVERLAY.querySelector('p').textContent  = '最终得分: '+score+' | 到达第 '+wave+' 波';
   START.textContent = '再来一局';
 }
 
@@ -459,7 +447,6 @@ function loop(){
 
   drawMap();
 
-  // 生成敌人
   while(spawnQueue.length > 0 && enemies.length < 8){
     spawnEnemy(spawnQueue.shift());
   }
@@ -479,19 +466,45 @@ function loop(){
 }
 
 // ============================================================
-//  键盘事件 — 使用 e.code 精确识别按键
+//  键盘事件 — 多重 fallback 确保按键捕获
 // ============================================================
-document.addEventListener('keydown', function(e){
-  // 只记录我们关心的按键
-  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)){
+const UP_KEYS    = new Set(['ArrowUp',    'KeyW', 'w',     '38']);
+const DOWN_KEYS  = new Set(['ArrowDown',  'KeyS', 's',     '40']);
+const LEFT_KEYS  = new Set(['ArrowLeft',  'KeyA', 'a',     '37']);
+const RIGHT_KEYS = new Set(['ArrowRight', 'KeyD', 'd',     '39']);
+const SHOOT_KEYS = new Set(['Space', 'KeyJ', 'j', '8']);
+
+function isMoveKey(code) {
+  return UP_KEYS.has(code) || DOWN_KEYS.has(code) ||
+         LEFT_KEYS.has(code) || RIGHT_KEYS.has(code) ||
+         SHOOT_KEYS.has(code);
+}
+
+document.addEventListener('keydown', function(e) {
+  const code = e.code;
+  const key  = e.key;
+
+  if(isMoveKey(code) || isMoveKey(key)){
     e.preventDefault();
-    keys[e.code] = true;
+    // 优先用 code，其次用 key
+    if(code && code !== 'Unidentified'){
+      keys[code] = true;
+    } else if(key && key !== 'Unidentified'){
+      keys[key] = true;
+    }
+    if(!document.hasFocus()) document.body.focus();
   }
 });
 
-document.addEventListener('keyup', function(e){
-  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)){
-    keys[e.code] = false;
+document.addEventListener('keyup', function(e) {
+  const code = e.code;
+  const key  = e.key;
+  if(isMoveKey(code) || isMoveKey(key)){
+    if(code && code !== 'Unidentified'){
+      keys[code] = false;
+    } else if(key && key !== 'Unidentified'){
+      keys[key] = false;
+    }
   }
 });
 
