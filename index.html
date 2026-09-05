@@ -117,6 +117,7 @@ function generateMap(w){
   canvasH = rows * CELL;
   canvas.width = canvasW;
   canvas.height = canvasH;
+  console.log('generateMap:', w, 'cols:', cols, 'rows:', rows, 'canvasW:', canvasW, 'canvasH:', canvasH);
 
   // 重新调整玩家出生位置（在地图底部中央，确保不在墙内）
   if(player){
@@ -395,13 +396,14 @@ function findSpawnPos(){
       let overlap=false;
       for(let o of enemies){if(Math.abs(x-o.x)<TANK_S&&Math.abs(y-o.y)<TANK_S){overlap=true;break;}}
       if(!overlap){
-        console.log('Spawn enemy at:', x, y);
+        console.log('Spawn enemy at:', x, y, 'canvas:', canvasW, canvasH);
         return{x,y};
       }
     }
     attempts++;
   }
   // 保底：在顶部中央生成（可能穿墙）
+  console.log('Fallback spawn at:', canvasW/2-TANK_S/2, TANK_S, 'canvas:', canvasW, canvasH);
   return{x:canvasW/2-TANK_S/2, y:TANK_S};
 }
 
