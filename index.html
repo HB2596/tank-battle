@@ -77,7 +77,8 @@ const HUD_WAVE    = document.getElementById('waveDisplay');
 const HUD_ENEMY   = document.getElementById('enemyDisplay');
 
 // ---- 常量 ----
-const BW_SPD   = 8;
+const BW     = 6;   // 子弹直径
+const BW_SPD = 8;
 const TANK_S   = 34;  // 坦克宽高
 const TANK_SPD = 2.2;
 const ENEMY_BASE_SPD = 0.9;
@@ -583,9 +584,9 @@ START.addEventListener('click', startGame);
 canvas.addEventListener('click', function(){canvas.focus();});
 
 // 初始渲染
-ctx.fillStyle='#16213e';ctx.fillRect(0,0,W,H);
+ctx.fillStyle='#16213e';ctx.fillRect(0,0,canvasW,canvasH);
 ctx.fillStyle='#555';ctx.font='16px Courier New';
-ctx.fillText('按【开始游戏】开始', W/2-80, H/2);
+ctx.fillText('按【开始游戏】开始', canvasW/2-80, canvasH/2);
 </script>
 </body>
 </html>
