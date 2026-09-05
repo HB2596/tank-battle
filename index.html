@@ -8,18 +8,13 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: #1a1a2e;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      font-family: 'Courier New', monospace;
-      color: #eee;
-      flex-direction: column;
-      gap: 10px;
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh; font-family: 'Courier New', monospace; color: #eee;
+      flex-direction: column; gap: 8px;
     }
     h1 { color: #e94560; text-shadow: 2px 2px 0 #0f3460; font-size: 28px; letter-spacing: 4px; }
-    #gameContainer { position: relative; border: 3px solid #e94560; box-shadow: 0 0 20px rgba(233,69,96,0.5); border-radius: 4px; }
-    canvas { display: block; background: #16213e; cursor: crosshair; }
+    #gameContainer { position: relative; border: 3px solid #e94560; border-radius: 4px; }
+    canvas { display: block; background: #16213e; }
     #hud {
       display: flex; justify-content: space-between; width: 600px;
       padding: 8px 4px; font-size: 14px; color: #0f3460; background: #e94560;
@@ -37,13 +32,12 @@
     #overlay button {
       padding: 12px 32px; font-size: 18px; background: #e94560; color: #fff;
       border: none; border-radius: 4px; cursor: pointer; font-family: inherit;
-      letter-spacing: 2px; transition: background 0.2s;
+      letter-spacing: 2px;
     }
     #overlay button:hover { background: #c73652; }
-    .controls { font-size: 12px; color: #555; text-align: center; }
-    #kb {
-      font-size: 11px; color: #0f0; background: #000; width: 600px;
-      text-align: left; padding: 4px 8px; min-height: 16px;
+    #status {
+      width: 600px; font-size: 12px; color: #0f0; background: #000;
+      padding: 4px 8px; text-align: left; min-height: 18px;
     }
   </style>
 </head>
@@ -55,15 +49,14 @@
     <span id="waveDisplay">第 1 波</span>
   </div>
   <div id="gameContainer">
-    <canvas id="gameCanvas" width="600" height="500" tabindex="0"></canvas>
+    <canvas id="gameCanvas" width="600" height="500"></canvas>
     <div id="overlay">
       <h2>坦克大战</h2>
-      <p>↑↓←→ 移动 &nbsp;|&nbsp; 空格 射击 &nbsp;|&nbsp; 消灭所有敌舰！</p>
+      <p>↑↓←→ 移动 &nbsp;|&nbsp; 空格 射击</p>
       <button id="startBtn">开始游戏</button>
     </div>
   </div>
-  <div class="controls">↑↓←→ 移动 | 空格射击</div>
-  <div id="kb">等待按键...</div>
+  <div id="status">按【开始游戏】或点击画布，然后用方向键移动</div>
 
 <script>
 const canvas  = document.getElementById('gameCanvas');
@@ -72,7 +65,7 @@ const W       = canvas.width;
 const H       = canvas.height;
 const OVERLAY = document.getElementById('overlay');
 const START   = document.getElementById('startBtn');
-const KB      = document.getElementById('kb');
+const STATUS  = document.getElementById('status');
 
 const HUD_SCORE   = document.getElementById('scoreDisplay');
 const HUD_LIVES   = document.getElementById('livesDisplay');
@@ -88,14 +81,9 @@ const INVINCIBLE_DUR = 120;
 
 let player, enemies, bullets, particles;
 let score, lives, wave, frame, gameOver, running;
-// 用独立变量追踪每个方向，避免对象键污染问题
-let moveUp    = false;
-let moveDown  = false;
-let moveLeft  = false;
-let moveRight = false;
-let shootKey  = false;
-let waveTimer = 0;
-let spawnQueue = [];
+// 独立布尔变量追踪按键
+let mUp=false, mDown=false, mLeft=false, mRight=false, shoot=false;
+let waveTimer=0, spawnQueue=[];
 
 const MAP_TEMPLATE = [
   [1,1,0,0,0,0,1,1,1,0,0,0,0,0,1],
@@ -112,194 +100,136 @@ const MAP_TEMPLATE = [
   [0,0,1,1,0,0,0,0,0,0,0,1,1,0,0],
 ];
 
-function rand(a,b){ return a + Math.random()*(b-a); }
-function rectOverlap(a,b){
-  return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
-}
+function rand(a,b){ return a+Math.random()*(b-a); }
+function rectOverlap(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
 function posInWall(x,y,w,h){
-  const left   = Math.floor(x / CELL);
-  const right  = Math.floor((x+w-1) / CELL);
-  const top    = Math.floor(y / CELL);
-  const bottom = Math.floor((y+h-1) / CELL);
-  for (let r = top; r <= bottom; r++) {
-    for (let c = left; c <= right; c++) {
-      if (r<0||r>=MAP_TEMPLATE.length||c<0||c>=MAP_TEMPLATE[0].length) return true;
-      if (MAP_TEMPLATE[r][c] !== 0) return true;
-    }
+  const l=Math.floor(x/CELL), r=Math.floor((x+w-1)/CELL);
+  const t=Math.floor(y/CELL), b=Math.floor((y+h-1)/CELL);
+  for(let rr=t; rr<=b; rr++) for(let cc=l; cc<=r; cc++){
+    if(rr<0||rr>=MAP_TEMPLATE.length||cc<0||cc>=MAP_TEMPLATE[0].length) return true;
+    if(MAP_TEMPLATE[rr][cc]!==0) return true;
   }
   return false;
 }
 
-function drawTank(x, y, dir, color, isPlayer, invincible){
+function drawTank(x,y,dir,color,isPlayer,inv){
   ctx.save();
-  ctx.translate(x + TANK_S/2, y + TANK_S/2);
-  const angles = { up: -Math.PI/2, down: Math.PI/2, left: Math.PI, right: 0 };
-  ctx.rotate(angles[dir] || 0);
-  ctx.fillStyle = '#555';
-  ctx.fillRect(-TANK_S/2, -TANK_S/2, 8, TANK_S);
-  ctx.fillRect(TANK_S/2-8, -TANK_S/2, 8, TANK_S);
-  ctx.strokeStyle = '#777';
-  ctx.lineWidth = 1;
-  for(let i = -TANK_S/2; i < TANK_S/2; i += 6){
-    ctx.beginPath(); ctx.moveTo(-TANK_S/2+1, i); ctx.lineTo(-TANK_S/2+7, i); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(TANK_S/2-7, i);  ctx.lineTo(TANK_S/2-1, i);  ctx.stroke();
+  ctx.translate(x+TANK_S/2, y+TANK_S/2);
+  const angles={up:-Math.PI/2,down:Math.PI/2,left:Math.PI,right:0};
+  ctx.rotate(angles[dir]||0);
+  ctx.fillStyle='#555';
+  ctx.fillRect(-TANK_S/2,-TANK_S/2,8,TANK_S);
+  ctx.fillRect(TANK_S/2-8,-TANK_S/2,8,TANK_S);
+  ctx.strokeStyle='#777';ctx.lineWidth=1;
+  for(let i=-TANK_S/2;i<TANK_S/2;i+=6){
+    ctx.beginPath();ctx.moveTo(-TANK_S/2+1,i);ctx.lineTo(-TANK_S/2+7,i);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(TANK_S/2-7,i);ctx.lineTo(TANK_S/2-1,i);ctx.stroke();
   }
-  ctx.fillStyle = invincible ? (Math.floor(frame/4)%2?'#fff':'#e94560') : color;
-  ctx.fillRect(-TANK_S/2+4, -TANK_S/2+4, TANK_S-8, TANK_S-8);
-  ctx.fillStyle = invincible ? '#fff' : (isPlayer ? '#ff6b6b' : '#e94560');
-  ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#aaa';
-  ctx.fillRect(-3, -TANK_S/2-6, 6, TANK_S/2+2);
+  ctx.fillStyle=inv?(Math.floor(frame/4)%2?'#fff':'#e94560'):color;
+  ctx.fillRect(-TANK_S/2+4,-TANK_S/2+4,TANK_S-8,TANK_S-8);
+  ctx.fillStyle=inv?'#fff':(isPlayer?'#ff6b6b':'#e94560');
+  ctx.beginPath();ctx.arc(0,0,8,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#aaa';ctx.fillRect(-3,-TANK_S/2-6,6,TANK_S/2+2);
   ctx.restore();
 }
 
-function spawnBullet(x, y, dir, owner){
-  bullets.push({
-    x: x + TANK_S/2 - BW/2,
-    y: y + TANK_S/2 - BW/2,
-    w: BW, h: BW, dir, owner, speed: BW_SPD
-  });
+function spawnBullet(x,y,dir,owner){
+  bullets.push({x:x+TANK_S/2-BW/2,y:y+TANK_S/2-BW/2,w:BW,h:BW,dir,owner,speed:BW_SPD});
 }
-
 function updateBullets(){
-  for(let i = bullets.length-1; i >= 0; i--){
-    const b = bullets[i];
-    if(b.dir === 'up')    b.y -= b.speed;
-    else if(b.dir === 'down')  b.y += b.speed;
-    else if(b.dir === 'left')  b.x -= b.speed;
-    else b.x += b.speed;
-
-    if(b.x < -BW || b.x > W || b.y < -BW || b.y > H){ bullets.splice(i,1); continue; }
-    if(posInWall(b.x, b.y, BW, BW)){ explode(b.x+BW/2, b.y+BW/2, 3, '#fa0'); bullets.splice(i,1); continue; }
-
-    if(b.owner === 'player'){
-      for(let j = enemies.length-1; j >= 0; j--){
+  for(let i=bullets.length-1;i>=0;i--){
+    const b=bullets[i];
+    if(b.dir==='up')b.y-=b.speed;else if(b.dir==='down')b.y+=b.speed;
+    else if(b.dir==='left')b.x-=b.speed;else b.x+=b.speed;
+    if(b.x<-BW||b.x>W||b.y<-BW||b.y>H){bullets.splice(i,1);continue;}
+    if(posInWall(b.x,b.y,BW,BW)){explode(b.x+BW/2,b.y+BW/2,3,'#fa0');bullets.splice(i,1);continue;}
+    if(b.owner==='player'){
+      for(let j=enemies.length-1;j>=0;j--){
         if(rectOverlap({x:b.x,y:b.y,w:b.w,h:b.h},{x:enemies[j].x,y:enemies[j].y,w:TANK_S,h:TANK_S})){
-          explode(enemies[j].x+TANK_S/2, enemies[j].y+TANK_S/2, 15, '#e94560');
-          score += enemies[j].type==='basic'?10:(enemies[j].type==='fast'?20:30);
-          HUD_SCORE.textContent = '得分: '+score;
-          enemies.splice(j,1); bullets.splice(i,1); checkWave(); break;
+          explode(enemies[j].x+TANK_S/2,enemies[j].y+TANK_S/2,15,'#e94560');
+          score+=enemies[j].type==='basic'?10:(enemies[j].type==='fast'?20:30);
+          HUD_SCORE.textContent='得分:'+score;enemies.splice(j,1);bullets.splice(i,1);checkWave();break;
         }
-      }
-      continue;
+      }continue;
     }
-    if(b.owner === 'enemy' && !player.invincible){
+    if(b.owner==='enemy'&&!player.invincible){
       if(rectOverlap({x:b.x,y:b.y,w:b.w,h:b.h},{x:player.x,y:player.y,w:TANK_S,h:TANK_S})){
-        explode(player.x+TANK_S/2, player.y+TANK_S/2, 20, '#e94560');
-        lives--; updateHUD();
-        if(lives <= 0){ endGame(); return; }
-        player.invincible = INVINCIBLE_DUR;
-        bullets.splice(i,1); continue;
+        explode(player.x+TANK_S/2,player.y+TANK_S/2,20,'#e94560');lives--;updateHUD();
+        if(lives<=0){endGame();return;}player.invincible=INVINCIBLE_DUR;bullets.splice(i,1);continue;
       }
     }
   }
 }
-
 function drawBullets(){
-  bullets.forEach(b => {
-    ctx.fillStyle = b.owner==='player'?'#ffd700':'#ff6';
-    ctx.beginPath(); ctx.arc(b.x+BW/2, b.y+BW/2, BW/2, 0, Math.PI*2); ctx.fill();
-  });
+  bullets.forEach(b=>{ctx.fillStyle=b.owner==='player'?'#ffd700':'#ff6';
+    ctx.beginPath();ctx.arc(b.x+BW/2,b.y+BW/2,BW/2,0,Math.PI*2);ctx.fill();});
 }
-
-function explode(cx,cy,count,color){
-  for(let i=0;i<count;i++){
-    particles.push({x:cx,y:cy,vx:rand(-3,3),vy:rand(-3,3),life:rand(15,35),maxLife:35,color:color||'#e94560',size:rand(2,5)});
-  }
+function explode(cx,cy,n,color){
+  for(let i=0;i<n;i++)particles.push({x:cx,y:cy,vx:rand(-3,3),vy:rand(-3,3),life:rand(15,35),maxLife:35,color:color||'#e94560',size:rand(2,5)});
 }
 function updateParticles(){
   for(let i=particles.length-1;i>=0;i--){
-    particles[i].x+=particles[i].vx; particles[i].y+=particles[i].vy; particles[i].life--;
-    if(particles[i].life<=0) particles.splice(i,1);
+    particles[i].x+=particles[i].vx;particles[i].y+=particles[i].vy;particles[i].life--;
+    if(particles[i].life<=0)particles.splice(i,1);
   }
 }
 function drawParticles(){
-  particles.forEach(p=>{
-    ctx.globalAlpha=p.life/p.maxLife;
-    ctx.fillStyle=p.color;
-    ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
-  });
+  particles.forEach(p=>{ctx.globalAlpha=p.life/p.maxLife;ctx.fillStyle=p.color;
+    ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);});
   ctx.globalAlpha=1;
 }
-
-function initPlayer(){
-  return { x:W/2-TANK_S/2, y:H-TANK_S-10, dir:'up', color:'#4ade80', invincible:0, shootCooldown:0 };
-}
+function initPlayer(){return{x:W/2-TANK_S/2,y:H-TANK_S-10,dir:'up',color:'#4ade80',invincible:0,shootCooldown:0};}
 
 function updatePlayer(){
-  if(player.invincible>0) player.invincible--;
-  if(player.shootCooldown>0) player.shootCooldown--;
+  if(player.invincible>0)player.invincible--;
+  if(player.shootCooldown>0)player.shootCooldown--;
 
-  let dx=0, dy=0;
-  if(moveUp){    dy=-TANK_SPD; player.dir='up';    }
-  if(moveDown){  dy=TANK_SPD;  player.dir='down';  }
-  if(moveLeft){  dx=-TANK_SPD; player.dir='left';  }
-  if(moveRight){ dx=TANK_SPD;  player.dir='right'; }
+  let dx=0,dy=0;
+  if(mUp){dy=-TANK_SPD;player.dir='up';STATUS.textContent='▲ 上移 key:'+mUp+' player:'+Math.round(player.x)+','+Math.round(player.y)+' dir:'+player.dir;}
+  if(mDown){dy=TANK_SPD;player.dir='down';STATUS.textContent='▼ 下移 key:'+mDown+' player:'+Math.round(player.x)+','+Math.round(player.y)+' dir:'+player.dir;}
+  if(mLeft){dx=-TANK_SPD;player.dir='left';STATUS.textContent='◄ 左移 key:'+mLeft+' player:'+Math.round(player.x)+','+Math.round(player.y)+' dir:'+player.dir;}
+  if(mRight){dx=TANK_SPD;player.dir='right';STATUS.textContent='► 右移 key:'+mRight+' player:'+Math.round(player.x)+','+Math.round(player.y)+' dir:'+player.dir;}
+  if(!mUp&&!mDown&&!mLeft&&!mRight&&!shoot)STATUS.textContent='空闲 按方向键移动';
 
-  // X 轴
-  const nx = player.x + dx;
-  if(dx !== 0 && !posInWall(nx, player.y, TANK_S, TANK_S)){
-    player.x = Math.max(0, Math.min(W-TANK_S, nx));
-  }
-  // Y 轴
-  const ny = player.y + dy;
-  if(dy !== 0 && !posInWall(player.x, ny, TANK_S, TANK_S)){
-    player.y = Math.max(0, Math.min(H-TANK_S, ny));
-  }
+  const nx=player.x+dx, ny=player.y+dy;
+  if(dx!==0&&!posInWall(nx,player.y,TANK_S,TANK_S))player.x=Math.max(0,Math.min(W-TANK_S,nx));
+  if(dy!==0&&!posInWall(player.x,ny,TANK_S,TANK_S))player.y=Math.max(0,Math.min(H-TANK_S,ny));
 
-  if(shootKey && player.shootCooldown<=0){
-    spawnBullet(player.x, player.y, player.dir, 'player');
-    player.shootCooldown = 18;
+  if(shoot&&player.shootCooldown<=0){
+    spawnBullet(player.x,player.y,player.dir,'player');
+    player.shootCooldown=18;
   }
 }
 
-const TYPES = {
-  basic:  { color:'#e94560', hp:1, score:10, speed:ENEMY_SPD },
-  fast:   { color:'#f59e0b', hp:1, score:20, speed:ENEMY_SPD*1.6 },
-  heavy:  { color:'#8b5cf6', hp:2, score:30, speed:ENEMY_SPD*0.7 },
-};
-
+const TYPES={basic:{color:'#e94560',hp:1,score:10,speed:ENEMY_SPD},fast:{color:'#f59e0b',hp:1,score:20,speed:ENEMY_SPD*1.6},heavy:{color:'#8b5cf6',hp:2,score:30,speed:ENEMY_SPD*0.7}};
 function spawnEnemy(type){
   const t=TYPES[type]||TYPES.basic;
   const e={x:rand(40,W-TANK_S-40),y:-TANK_S,dir:'down',type,color:t.color,speed:t.speed,shootCooldown:rand(30,90)|0,hp:t.hp,moveTimer:0};
   for(let o of enemies){if(Math.abs(e.x-o.x)<TANK_S&&Math.abs(e.y-o.y)<TANK_S)return;}
   enemies.push(e);
 }
-
 function updateEnemies(){
   enemies.forEach(e=>{
     e.moveTimer--;
-    if(e.moveTimer<=0){
-      const r=Math.random();
-      e.dir=r<0.5?'down':(r<0.65?'left':(r<0.8?'right':'up'));
-      e.moveTimer=rand(30,80)|0;
-    }
+    if(e.moveTimer<=0){const r=Math.random();e.dir=r<0.5?'down':(r<0.65?'left':(r<0.8?'right':'up'));e.moveTimer=rand(30,80)|0;}
     let dx=0,dy=0;
-    if(e.dir==='up')dy=-e.speed;
-    else if(e.dir==='down')dy=e.speed;
-    else if(e.dir==='left')dx=-e.speed;
-    else dx=e.speed;
-    const nx=e.x+dx, ny=e.y+dy;
-    if(dx!==0&&!posInWall(nx,e.y,TANK_S,TANK_S)) e.x=Math.max(0,Math.min(W-TANK_S,nx));
-    if(dy!==0&&!posInWall(e.x,ny,TANK_S,TANK_S)) e.y=Math.max(0,Math.min(H-TANK_S,ny));
+    if(e.dir==='up')dy=-e.speed;else if(e.dir==='down')dy=e.speed;
+    else if(e.dir==='left')dx=-e.speed;else dx=e.speed;
+    const nx=e.x+dx,ny=e.y+dy;
+    if(dx!==0&&!posInWall(nx,e.y,TANK_S,TANK_S))e.x=Math.max(0,Math.min(W-TANK_S,nx));
+    if(dy!==0&&!posInWall(e.x,ny,TANK_S,TANK_S))e.y=Math.max(0,Math.min(H-TANK_S,ny));
     e.shootCooldown--;
     if(e.shootCooldown<=0){spawnBullet(e.x,e.y,e.dir,'enemy');e.shootCooldown=rand(60,150)|0;}
   });
 }
-
 function checkWave(){
   if(enemies.length===0){waveTimer++;if(waveTimer>90){wave++;HUD_WAVE.textContent='第 '+wave+' 波';spawnWave();waveTimer=0;}}
 }
 function spawnWave(){
   const count=Math.min(2+wave*2,16);
-  for(let i=0;i<count;i++){
-    const r=Math.random();let type='basic';
-    if(wave>=2&&r<0.3)type='fast';
-    if(wave>=3&&r<0.15)type='heavy';
-    spawnQueue.push(type);
-  }
+  for(let i=0;i<count;i++){const r=Math.random();let type='basic';
+    if(wave>=2&&r<0.3)type='fast';if(wave>=3&&r<0.15)type='heavy';spawnQueue.push(type);}
 }
-
 function drawMap(){
   MAP_TEMPLATE.forEach((row,r)=>{
     row.forEach((cell,c)=>{
@@ -313,21 +243,17 @@ function drawMap(){
     });
   });
 }
-
 function updateHUD(){HUD_LIVES.textContent='生命: '+'♥'.repeat(Math.max(0,lives));}
 
 function startGame(){
   player=initPlayer();enemies=[];bullets=[];particles=[];
   score=0;lives=3;wave=1;frame=0;gameOver=false;running=true;waveTimer=0;spawnQueue=[];
-  // 重置按键状态
-  moveUp=false;moveDown=false;moveLeft=false;moveRight=false;shootKey=false;
+  mUp=mDown=mLeft=mRight=shoot=false;
   HUD_SCORE.textContent='得分: 0';updateHUD();HUD_WAVE.textContent='第 1 波';
   OVERLAY.classList.add('hidden');
-  canvas.focus();
-  spawnWave();
-  loop();
+  STATUS.textContent='游戏开始！用方向键移动';
+  spawnWave();loop();
 }
-
 function endGame(){
   gameOver=true;running=false;
   OVERLAY.classList.remove('hidden');
@@ -335,11 +261,9 @@ function endGame(){
   OVERLAY.querySelector('p').textContent='最终得分: '+score+' | 到达第 '+wave+' 波';
   START.textContent='再来一局';
 }
-
 function loop(){
   if(!running)return;
-  frame++;
-  ctx.clearRect(0,0,W,H);
+  frame++;ctx.clearRect(0,0,W,H);
   drawMap();
   while(spawnQueue.length>0&&enemies.length<8)spawnEnemy(spawnQueue.shift());
   updatePlayer();updateEnemies();updateBullets();updateParticles();
@@ -351,34 +275,30 @@ function loop(){
 }
 
 // ============================================================
-//  键盘控制 — 独立布尔变量，直接绑定
+//  键盘事件 — 最简最可靠的实现
 // ============================================================
 document.addEventListener('keydown', function(e) {
-  const code = e.code;
-  const key  = e.key.toLowerCase();
-
-  // 方向键
-  if(code==='ArrowUp'||key==='w'||key==='up')       { moveUp=true;    e.preventDefault(); }
-  if(code==='ArrowDown'||key==='s'||key==='down')    { moveDown=true;  e.preventDefault(); }
-  if(code==='ArrowLeft'||key==='a'||key==='left')    { moveLeft=true;  e.preventDefault(); }
-  if(code==='ArrowRight'||key==='d'||key==='right')  { moveRight=true; e.preventDefault(); }
-  // 射击键
-  if(code==='Space'||key===' ')                      { shootKey=true;  e.preventDefault(); }
+  switch(e.code) {
+    case 'ArrowUp':    mUp=true;    e.preventDefault(); break;
+    case 'ArrowDown':  mDown=true;  e.preventDefault(); break;
+    case 'ArrowLeft':  mLeft=true;  e.preventDefault(); break;
+    case 'ArrowRight': mRight=true; e.preventDefault(); break;
+    case 'Space':      shoot=true;  e.preventDefault(); break;
+  }
 });
 
 document.addEventListener('keyup', function(e) {
-  const code = e.code;
-  const key  = e.key.toLowerCase();
-
-  if(code==='ArrowUp'||key==='w'||key==='up')       moveUp=false;
-  if(code==='ArrowDown'||key==='s'||key==='down')    moveDown=false;
-  if(code==='ArrowLeft'||key==='a'||key==='left')    moveLeft=false;
-  if(code==='ArrowRight'||key==='d'||key==='right')  moveRight=false;
-  if(code==='Space'||key===' ')                      shootKey=false;
+  switch(e.code) {
+    case 'ArrowUp':    mUp=false;    break;
+    case 'ArrowDown':  mDown=false;  break;
+    case 'ArrowLeft':  mLeft=false;  break;
+    case 'ArrowRight': mRight=false; break;
+    case 'Space':      shoot=false;  break;
+  }
 });
 
 START.addEventListener('click', startGame);
-canvas.addEventListener('click', function(){canvas.focus();});
+canvas.addEventListener('click', function(){ canvas.focus(); STATUS.textContent='游戏已激活！按方向键移动'; });
 
 ctx.fillStyle='#16213e';ctx.fillRect(0,0,W,H);drawMap();
 </script>
