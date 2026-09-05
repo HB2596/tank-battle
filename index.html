@@ -114,6 +114,26 @@ function posInWall(x,y,w,h){
   return false;
 }
 
+// 找空地生成敌人
+function findSpawnPos(){
+  let attempts=0;
+  while(attempts<50){
+    const x=rand(40,W-TANK_S-40);
+    const y=rand(0,60); // 在顶部区域生成
+    if(!posInWall(x,y,TANK_S,TANK_S)){
+      // 再检查不与其它敌人重叠
+      let overlap=false;
+      for(let o of enemies){
+        if(Math.abs(x-o.x)<TANK_S&&Math.abs(y-o.y)<TANK_S){overlap=true;break;}
+      }
+      if(!overlap)return{x,y};
+    }
+    attempts++;
+  }
+  // 保底：返回顶部中央
+  return{x:W/2-TANK_S/2, y:-TANK_S};
+}
+
 function drawTank(x,y,dir,color,isPlayer,inv){
   ctx.save();
   ctx.translate(x+TANK_S/2, y+TANK_S/2);
@@ -206,20 +226,32 @@ function updatePlayer(){
 const TYPES={basic:{color:'#e94560',hp:1,score:10,speed:ENEMY_SPD},fast:{color:'#f59e0b',hp:1,score:20,speed:ENEMY_SPD*1.6},heavy:{color:'#8b5cf6',hp:2,score:30,speed:ENEMY_SPD*0.7}};
 function spawnEnemy(type){
   const t=TYPES[type]||TYPES.basic;
-  const e={x:rand(40,W-TANK_S-40),y:-TANK_S,dir:'down',type,color:t.color,speed:t.speed,shootCooldown:rand(30,90)|0,hp:t.hp,moveTimer:0};
-  for(let o of enemies){if(Math.abs(e.x-o.x)<TANK_S&&Math.abs(e.y-o.y)<TANK_S)return;}
+  const pos=findSpawnPos();
+  const e={x:pos.x,y:pos.y,dir:'down',type,color:t.color,speed:t.speed,shootCooldown:rand(30,90)|0,hp:t.hp,moveTimer:0};
   enemies.push(e);
 }
 function updateEnemies(){
   enemies.forEach(e=>{
     e.moveTimer--;
-    if(e.moveTimer<=0){const r=Math.random();e.dir=r<0.5?'down':(r<0.65?'left':(r<0.8?'right':'up'));e.moveTimer=rand(30,80)|0;}
+    if(e.moveTimer<=0){
+      const r=Math.random();
+      e.dir=r<0.5?'down':(r<0.65?'left':(r<0.8?'right':'up'));
+      e.moveTimer=rand(30,80)|0;
+    }
+    // 如果当前方向会撞墙，立即换个方向
+    if(posInWall(e.x,e.y,TANK_S,TANK_S)){
+      const dirs=['up','down','left','right'];
+      e.dir=dirs[Math.floor(Math.random()*4)];
+      e.moveTimer=0; // 立刻重新决策
+    }
     let dx=0,dy=0;
     if(e.dir==='up')dy=-e.speed;else if(e.dir==='down')dy=e.speed;
     else if(e.dir==='left')dx=-e.speed;else dx=e.speed;
     const nx=e.x+dx,ny=e.y+dy;
     if(dx!==0&&!posInWall(nx,e.y,TANK_S,TANK_S))e.x=Math.max(0,Math.min(W-TANK_S,nx));
+    else if(dx!==0){e.dir=Math.random()<0.5?'left':'right';e.moveTimer=0;}
     if(dy!==0&&!posInWall(e.x,ny,TANK_S,TANK_S))e.y=Math.max(0,Math.min(H-TANK_S,ny));
+    else if(dy!==0){e.dir=Math.random()<0.5?'up':'down';e.moveTimer=0;}
     e.shootCooldown--;
     if(e.shootCooldown<=0){spawnBullet(e.x,e.y,e.dir,'enemy');e.shootCooldown=rand(60,150)|0;}
   });
