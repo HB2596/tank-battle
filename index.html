@@ -579,22 +579,22 @@ window.addEventListener('unhandledrejection', function(e){
   b.textContent='Promise错误: '+e.reason;
 });
 document.addEventListener('keydown', function(e) {
-  switch(e.code){
-    case 'ArrowUp':    mUp=true;    e.preventDefault(); break;
-    case 'ArrowDown':  mDown=true;  e.preventDefault(); break;
-    case 'ArrowLeft':  mLeft=true;  e.preventDefault(); break;
-    case 'ArrowRight': mRight=true; e.preventDefault(); break;
-    case 'Space':      shoot=true;  e.preventDefault(); break;
-  }
+  const code = e.code;
+  console.log('keydown:', code);
+  if(code === 'ArrowUp')    { mUp=true;    e.preventDefault(); }
+  else if(code === 'ArrowDown')  { mDown=true;  e.preventDefault(); }
+  else if(code === 'ArrowLeft')  { mLeft=true;  e.preventDefault(); }
+  else if(code === 'ArrowRight') { mRight=true; e.preventDefault(); }
+  else if(code === 'Space')      { shoot=true;  e.preventDefault(); }
 });
 document.addEventListener('keyup', function(e) {
-  switch(e.code){
-    case 'ArrowUp':    mUp=false;    break;
-    case 'ArrowDown':  mDown=false;  break;
-    case 'ArrowLeft':  mLeft=false;  break;
-    case 'ArrowRight': mRight=false; break;
-    case 'Space':      shoot=false;  break;
-  }
+  const code = e.code;
+  console.log('keyup:', code);
+  if(code === 'ArrowUp')    mUp=false;
+  else if(code === 'ArrowDown')  mDown=false;
+  else if(code === 'ArrowLeft')  mLeft=false;
+  else if(code === 'ArrowRight') mRight=false;
+  else if(code === 'Space')      shoot=false;
 });
 
 START.addEventListener('click', startGame);
